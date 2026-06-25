@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Example Integration",
+        "description": "Set up the Example Integration.",
+        "data": {
+          "name": "Name",
+          "api_key": "API key"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This entry is already configured."
+    }
+  }
+}
