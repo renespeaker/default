@@ -1,0 +1,24 @@
+# Markdown-Karte "Morgenbriefing"
+# Dashboard → Bearbeiten → Karte hinzufügen → Manuell → diesen Inhalt einfügen.
+# "Region" im Zwischentitel nach Belieben umbenennen (z. B. "NRW · WDR").
+
+type: markdown
+content: >-
+  ## 📰 Morgenbriefing · {{ now().strftime('%A, %d.%m.%Y') }}
+
+  **Deutschland**
+
+  {% for e in (state_attr('sensor.tagesschau', 'entries') or [])[:5] %}
+  - [{{ e.title }}]({{ e.link }})
+  {% endfor %}
+
+  ---
+
+  **Meine Region**
+
+  {% for e in (state_attr('sensor.news_regional', 'entries') or [])[:5] %}
+  - [{{ e.title }}]({{ e.link }})
+  {% endfor %}
+
+  <ha-alert alert-type="info">Stand:
+  {{ states.sensor.tagesschau.last_updated.astimezone().strftime('%H:%M') }} Uhr</ha-alert>
