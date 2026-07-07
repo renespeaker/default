@@ -96,6 +96,26 @@ sensor:
   #   scan_interval: { minutes: 30 }
   #   inclusions: [title, link, published]
 
+  # ── Google News ───────────────────────────────────────────────────────
+  # Topmeldungen Deutschland (Preset: google_news)
+  # - platform: feedparser
+  #   name: MB Google News
+  #   feed_url: "https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de"
+  #   date_format: "%d.%m. %H:%M"
+  #   local_time: true
+  #   scan_interval: { minutes: 30 }
+  #   inclusions: [title, link, published]
+
+  # Lokal-Suche: Ort oder Begriff hinter q= eintragen (URL-kodiert).
+  # Alternativ direkt in der Karte: google: "Mein Ort"
+  # - platform: feedparser
+  #   name: MB Google Lokal
+  #   feed_url: "https://news.google.com/rss/search?q=Meine%20Stadt&hl=de&gl=DE&ceid=DE:de"
+  #   date_format: "%d.%m. %H:%M"
+  #   local_time: true
+  #   scan_interval: { minutes: 30 }
+  #   inclusions: [title, link, published]
+
   # ── Eigene Feeds: URL eintragen, Name frei wählen ────────────────────
   # - platform: feedparser
   #   name: Meine Lokalzeitung

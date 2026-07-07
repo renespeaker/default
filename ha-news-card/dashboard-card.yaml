@@ -7,6 +7,7 @@
 #   url:     eigener RSS/Atom-Link
 #   entity:  vorhandener Sensor mit "entries"-Attribut (z. B. Feedparser),
 #            falls du RSS in HA schon nutzt
+#   google:  Google-News-Suchfeed zu Begriff oder Ort (Lokalnachrichten!)
 
 type: custom:morgenbriefing-card
 title: Morgenbriefing
@@ -20,6 +21,12 @@ sections:
   # ndr_mv, hessenschau, mdr, rbb24
   - preset: wdr
     title: Meine Region
+
+  # Google News: Topmeldungen als Preset …
+  # - preset: google_news
+  # … oder Suchfeed zu Ort/Begriff (ideal für Lokalnachrichten):
+  # - title: Lokales
+  #   google: "Münster"
 
   # Eigener RSS-Link (Titel frei wählbar):
   # - title: Tech

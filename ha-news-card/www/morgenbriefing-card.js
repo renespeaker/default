@@ -1,11 +1,13 @@
 /**
  * Morgenbriefing Card – News-Karte für Home Assistant
  *
- * Drei Wege, eine Quelle einzubinden (pro Abschnitt in `sections`):
- *   1. preset: tagesschau        – mitgelieferter Standard-Feed
+ * Vier Wege, eine Quelle einzubinden (pro Abschnitt in `sections`):
+ *   1. preset: tagesschau        – mitgelieferter Standard-Feed (auch Google News)
  *   2. url: https://…/feed.xml   – eigener RSS/Atom-Link (direkter Abruf im Browser)
  *   3. entity: sensor.mein_feed  – vorhandener Sensor (z. B. Feedparser) mit
  *                                  einem `entries`-Attribut
+ *   4. google: "Suchbegriff"     – Google-News-Suchfeed, z. B. der eigene Ort
+ *                                  für Lokalnachrichten (google: "Münster")
  *
  * Bei Presets gilt die Reihenfolge: existiert der Sensor `sensor.mb_<preset>`
  * (aus packages/morgenbriefing.yaml), wird er benutzt – sonst versucht die
@@ -25,6 +27,11 @@
     heise:             { title: "Tech · heise online",       url: "https://www.heise.de/rss/heise-atom.xml" },
     spiegel:           { title: "SPIEGEL Schlagzeilen",      url: "https://www.spiegel.de/schlagzeilen/tops/index.rss" },
     ntv:               { title: "n-tv",                      url: "https://www.n-tv.de/rss" },
+    // Google News (Deutschland, deutschsprachig)
+    google_news:            { title: "Google News · Topmeldungen", url: "https://news.google.com/rss?hl=de&gl=DE&ceid=DE:de" },
+    google_news_welt:       { title: "Google News · Welt",         url: "https://news.google.com/rss/headlines/section/topic/WORLD?hl=de&gl=DE&ceid=DE:de" },
+    google_news_wirtschaft: { title: "Google News · Wirtschaft",   url: "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=de&gl=DE&ceid=DE:de" },
+    google_news_tech:       { title: "Google News · Technik",      url: "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=de&gl=DE&ceid=DE:de" },
     // Regional (ARD-Anstalten)
     wdr:               { title: "NRW · WDR",                        url: "https://www1.wdr.de/uebersicht-100.feed" },
     ndr_niedersachsen: { title: "Niedersachsen · NDR",              url: "https://www.ndr.de/nachrichten/niedersachsen/index-rss.xml" },
@@ -35,6 +42,11 @@
     mdr:               { title: "Mitteldeutschland · MDR",          url: "https://www.mdr.de/nachrichten/index-rss.xml" },
     rbb24:             { title: "Berlin/Brandenburg · rbb24",       url: "https://www.rbb24.de/aktuell/index.xml/feed=rss.xml" },
   };
+
+  // google: "Suchbegriff" -> Google-News-Suchfeed (Deutschland, deutschsprachig)
+  function googleSearchUrl(term) {
+    return `https://news.google.com/rss/search?q=${encodeURIComponent(term)}&hl=de&gl=DE&ceid=DE:de`;
+  }
 
   const FETCH_TTL_MS = 15 * 60 * 1000;
   // URL -> { ts, items, error, pending } – geteilt über alle Karten-Instanzen
@@ -83,14 +95,14 @@
 
     setConfig(config) {
       if (!Array.isArray(config.sections) || !config.sections.length) {
-        throw new Error('Bitte "sections" angeben – jeder Abschnitt braucht preset, url oder entity.');
+        throw new Error('Bitte "sections" angeben – jeder Abschnitt braucht preset, url, entity oder google.');
       }
       config.sections.forEach((s, i) => {
         if (s.preset && !PRESETS[s.preset]) {
           throw new Error(`Unbekanntes Preset "${s.preset}" (Abschnitt ${i + 1}). Verfügbar: ${Object.keys(PRESETS).join(", ")}`);
         }
-        if (!s.preset && !s.url && !s.entity) {
-          throw new Error(`Abschnitt ${i + 1} braucht preset, url oder entity.`);
+        if (!s.preset && !s.url && !s.entity && !s.google) {
+          throw new Error(`Abschnitt ${i + 1} braucht preset, url, entity oder google.`);
         }
       });
       this._config = config;
@@ -124,7 +136,10 @@
 
     _sectionData(section) {
       const preset = section.preset ? PRESETS[section.preset] : null;
-      const title = section.title || (preset && preset.title) || section.entity || "News";
+      const title = section.title
+        || (preset && preset.title)
+        || (section.google && `Google News · ${section.google}`)
+        || section.entity || "News";
       const maxItems = section.max_items || (this._config.max_items || 5);
 
       // 1. Explizit angegebener oder per Preset-Konvention gefundener Sensor
@@ -147,9 +162,11 @@
         };
       }
 
-      // 2. Direkter Abruf einer URL (eigener Link oder Preset-Feed)
-      const url = section.url || (preset && preset.url);
-      if (!url) return { title, error: "Keine Quelle angegeben (preset, url oder entity)." };
+      // 2. Direkter Abruf einer URL (eigener Link, Google-Suchfeed oder Preset-Feed)
+      const url = section.url
+        || (section.google && googleSearchUrl(section.google))
+        || (preset && preset.url);
+      if (!url) return { title, error: "Keine Quelle angegeben (preset, url, entity oder google)." };
 
       const cached = feedCache.get(url);
       if (cached && Date.now() - cached.ts < FETCH_TTL_MS) {
@@ -255,6 +272,6 @@
   window.customCards.push({
     type: "morgenbriefing-card",
     name: "Morgenbriefing Card",
-    description: "News-Karte mit Standard-Feeds (tagesschau, Regionalsender u. a.), eigenen RSS-URLs und vorhandenen Feed-Sensoren.",
+    description: "News-Karte mit Standard-Feeds (tagesschau, Google News, Regionalsender u. a.), Google-News-Suche, eigenen RSS-URLs und vorhandenen Feed-Sensoren.",
   });
 })();

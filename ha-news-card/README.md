@@ -1,7 +1,8 @@
 # 📰 Morgenbriefing Card – News-Karte für Home Assistant
 
 Jeden Morgen die wichtigsten nationalen und regionalen News auf dem Dashboard –
-mit **mitgelieferten Standard-Feeds** (Presets), **eigenen RSS-Links** und
+mit **mitgelieferten Standard-Feeds** (Presets inkl. Google News),
+**Google-News-Suchfeeds** für beliebige Orte/Begriffe, **eigenen RSS-Links** und
 Unterstützung für **vorhandene Feed-Sensoren**, falls RSS in Home Assistant
 schon genutzt wird.
 
@@ -15,9 +16,9 @@ schon genutzt wird.
 | `dashboard-card-markdown.yaml` | Fallback ohne Custom Card (reine Markdown-Karte) |
 | `automation.yaml` | Morgen-Automation: 06:00 Uhr Update + Push aufs Handy |
 
-## Drei Wege, eine Quelle einzubinden
+## Vier Wege, eine Quelle einzubinden
 
-Jeder Abschnitt (`sections`) der Karte bekommt seine News auf einem von drei Wegen:
+Jeder Abschnitt (`sections`) der Karte bekommt seine News auf einem von vier Wegen:
 
 ```yaml
 type: custom:morgenbriefing-card
@@ -27,9 +28,11 @@ sections:
   - preset: tagesschau            # 1. Standard-Feed, mitgeliefert
   - preset: wdr                   #    …auch regional
     title: Meine Region
-  - title: Tech                   # 2. Eigener RSS/Atom-Link
+  - title: Lokales                # 2. Google-News-Suche zu Ort/Begriff
+    google: "Münster"             #    (ideal für Lokalnachrichten)
+  - title: Tech                   # 3. Eigener RSS/Atom-Link
     url: https://www.heise.de/rss/heise-atom.xml
-  - title: Lokales                # 3. Vorhandener Sensor (z. B. Feedparser),
+  - title: Wirtschaft             # 4. Vorhandener Sensor (z. B. Feedparser),
     entity: sensor.mein_feed      #    wenn RSS in HA schon läuft
 ```
 
@@ -43,11 +46,22 @@ sections:
 | `heise` | heise online |
 | `spiegel` | SPIEGEL Schlagzeilen |
 | `ntv` | n-tv |
+| `google_news` | Google News – Topmeldungen Deutschland |
+| `google_news_welt` | Google News – Welt |
+| `google_news_wirtschaft` | Google News – Wirtschaft |
+| `google_news_tech` | Google News – Technik |
 | `wdr` | NRW (WDR) |
 | `ndr_niedersachsen` / `ndr_sh` / `ndr_hamburg` / `ndr_mv` | NDR-Regionalfeeds |
 | `hessenschau` | Hessen |
 | `mdr` | Sachsen / Sachsen-Anhalt / Thüringen |
 | `rbb24` | Berlin / Brandenburg |
+
+**Google News:** Neben den Presets baut `google: "Begriff"` automatisch einen
+Google-News-Suchfeed (deutschsprachig, Region DE) – praktisch für
+Lokalnachrichten zum eigenen Ort oder Themen wie einen Vereinsnamen. Für den
+zuverlässigen serverseitigen Abruf gibt es im Package fertige (auskommentierte)
+Google-News-Sensor-Blöcke. Hinweis: Google-News-Links führen über
+news.google.com zum Artikel, Titel enthalten den Quellennamen.
 
 **Wie die Karte eine Preset-Quelle auflöst:** Existiert der Sensor
 `sensor.mb_<preset>` (aus dem Package), wird er benutzt – zuverlässigster Weg.
