@@ -1,84 +1,113 @@
-# 📰 Morgenbriefing – News-Karte für Home Assistant
+# 📰 Morgenbriefing Card – News-Karte für Home Assistant
 
-Ziel: Jeden Morgen auf dem Dashboard die wichtigsten nationalen News (tagesschau)
-und die regionalen Nachrichten für die eigene Region sehen – automatisch
-aktualisiert, optional mit Push-Benachrichtigung aufs Handy.
+Jeden Morgen die wichtigsten nationalen und regionalen News auf dem Dashboard –
+mit **mitgelieferten Standard-Feeds** (Presets), **eigenen RSS-Links** und
+Unterstützung für **vorhandene Feed-Sensoren**, falls RSS in Home Assistant
+schon genutzt wird.
 
-## Architektur
+## Dateien
 
+| Datei | Zweck |
+|---|---|
+| `www/morgenbriefing-card.js` | Die Custom Card (Lovelace-Ressource) |
+| `packages/morgenbriefing.yaml` | Standard-Feed-Sensoren als HA-Package (empfohlen) |
+| `dashboard-card.yaml` | Beispiel-Konfiguration der Karte |
+| `dashboard-card-markdown.yaml` | Fallback ohne Custom Card (reine Markdown-Karte) |
+| `automation.yaml` | Morgen-Automation: 06:00 Uhr Update + Push aufs Handy |
+
+## Drei Wege, eine Quelle einzubinden
+
+Jeder Abschnitt (`sections`) der Karte bekommt seine News auf einem von drei Wegen:
+
+```yaml
+type: custom:morgenbriefing-card
+title: Morgenbriefing
+max_items: 5
+sections:
+  - preset: tagesschau            # 1. Standard-Feed, mitgeliefert
+  - preset: wdr                   #    …auch regional
+    title: Meine Region
+  - title: Tech                   # 2. Eigener RSS/Atom-Link
+    url: https://www.heise.de/rss/heise-atom.xml
+  - title: Lokales                # 3. Vorhandener Sensor (z. B. Feedparser),
+    entity: sensor.mein_feed      #    wenn RSS in HA schon läuft
 ```
-RSS-Feeds (tagesschau + Regionalsender)
-        │
-        ▼
-Feedparser-Sensoren (HACS-Integration "feedparser")
-        │
-        ▼
-Markdown-Karte auf dem Dashboard  ◄── Automation: Update um 06:00 + Push
-```
 
-## Umsetzung in 5 Schritten
+**Presets** (Stand siehe `www/morgenbriefing-card.js`):
 
-### 1. Feedparser installieren
+| Preset | Feed |
+|---|---|
+| `tagesschau` | tagesschau.de – Topmeldungen |
+| `tagesschau_inland` | tagesschau.de – Inland |
+| `sportschau` | sportschau.de |
+| `heise` | heise online |
+| `spiegel` | SPIEGEL Schlagzeilen |
+| `ntv` | n-tv |
+| `wdr` | NRW (WDR) |
+| `ndr_niedersachsen` / `ndr_sh` / `ndr_hamburg` / `ndr_mv` | NDR-Regionalfeeds |
+| `hessenschau` | Hessen |
+| `mdr` | Sachsen / Sachsen-Anhalt / Thüringen |
+| `rbb24` | Berlin / Brandenburg |
 
-In HACS nach **feedparser** suchen (Repository: `custom-components/feedparser`)
-und installieren, danach Home Assistant neu starten. Die Integration erzeugt
-Sensoren, deren `entries`-Attribut die Schlagzeilen mit Titel, Link und
-Zeitstempel enthält – ideal für Templates.
+**Wie die Karte eine Preset-Quelle auflöst:** Existiert der Sensor
+`sensor.mb_<preset>` (aus dem Package), wird er benutzt – zuverlässigster Weg.
+Sonst versucht die Karte, den Feed direkt im Browser abzurufen. Blockiert die
+News-Seite das per CORS, zeigt die Karte einen Hinweis, für diesen Feed einen
+Sensor anzulegen. Gleiches gilt für eigene `url:`-Einträge.
 
-### 2. Sensoren anlegen
+## Installation
 
-Inhalt von [`configuration.yaml`](configuration.yaml) in die eigene
-`configuration.yaml` übernehmen (oder als Package einbinden). Zwei Sensoren:
+### 1. Karte als Ressource einbinden
 
-- `sensor.tagesschau` – nationale News
-- `sensor.news_regional` – Feed des Regionalsenders (URL je nach Bundesland,
-  siehe Tabelle unten)
+`www/morgenbriefing-card.js` nach `/config/www/` kopieren, dann:
+Einstellungen → Dashboards → ⋮ → **Ressourcen** → Hinzufügen →
+URL `/local/morgenbriefing-card.js`, Typ **JavaScript-Modul**. Browser-Cache
+leeren (Strg+F5).
 
-**Wichtig:** Feed-URL vor dem Eintragen einmal im Browser öffnen – es muss
-XML/RSS erscheinen. Die Sender ändern ihre URLs gelegentlich.
+### 2. Standard-Sensoren anlegen (empfohlen)
+
+Damit alle Feeds zuverlässig serverseitig geladen werden:
+
+1. HACS-Integration **feedparser** installieren (`custom-components/feedparser`), HA neu starten.
+2. `packages/morgenbriefing.yaml` nach `/config/packages/` kopieren und in der
+   `configuration.yaml` Packages aktivieren:
+   ```yaml
+   homeassistant:
+     packages: !include_dir_named packages
+   ```
+3. Im Package den passenden Regional-Block einkommentieren und bei Bedarf
+   eigene Feeds im Abschnitt „Eigene Feeds" ergänzen. HA neu starten.
+
+Wer keine Packages nutzt, kann den `sensor:`-Block auch direkt in die
+`configuration.yaml` übernehmen.
+
+**Schon Feedparser/RSS-Sensoren im Einsatz?** Dann entfällt dieser Schritt –
+vorhandene Sensoren einfach per `entity:` in der Karte einbinden (die Karte
+erwartet ein `entries`-Attribut mit `title`, `link`, `published`).
 
 ### 3. Karte aufs Dashboard
 
 Dashboard → Bearbeiten → Karte hinzufügen → **Manuell** → Inhalt von
-[`dashboard-card.yaml`](dashboard-card.yaml) einfügen. Die Markdown-Karte
-rendert die Top-5-Schlagzeilen beider Feeds mit klickbaren Links.
+`dashboard-card.yaml` einfügen und anpassen.
 
-### 4. Morgen-Automation
+Optionen: `title` (Kartentitel), `max_items` (global oder je Abschnitt),
+`show_time: false` (Zeitstempel ausblenden).
 
-[`automation.yaml`](automation.yaml) legt eine Automation an, die um 06:00 Uhr
-beide Sensoren aktualisiert und die Top-3-Schlagzeilen als Push-Nachricht aufs
-Handy schickt (`notify.mobile_app_…` an das eigene Gerät anpassen).
+### 4. Morgen-Automation (optional)
 
-### 5. Optional: KI-Zusammenfassung
-
-Mit einer KI-Integration (z. B. Anthropic/Claude oder OpenAI in Home Assistant)
-kann die Automation die Schlagzeilen zusätzlich per `conversation.process` zu
-einem 3-Sätze-Briefing zusammenfassen und in einem `input_text` oder
-Template-Sensor ablegen – die Karte zeigt es dann über den Schlagzeilen an.
-
-## Regionale RSS-Feeds (Auswahl)
-
-| Region | Sender | Feed-URL (vor Nutzung prüfen!) |
-|---|---|---|
-| Deutschland | tagesschau | `https://www.tagesschau.de/index~rss2.xml` |
-| NRW | WDR | `https://www1.wdr.de/uebersicht-100.feed` |
-| Niedersachsen | NDR | `https://www.ndr.de/nachrichten/niedersachsen/index-rss.xml` |
-| Schleswig-Holstein | NDR | `https://www.ndr.de/nachrichten/schleswig-holstein/index-rss.xml` |
-| Hamburg | NDR | `https://www.ndr.de/nachrichten/hamburg/index-rss.xml` |
-| Mecklenburg-Vorp. | NDR | `https://www.ndr.de/nachrichten/mecklenburg-vorpommern/index-rss.xml` |
-| Hessen | hessenschau | `https://www.hessenschau.de/index.rss` |
-| Sachsen/Sa.-Anh./Thür. | MDR | `https://www.mdr.de/nachrichten/index-rss.xml` |
-| Berlin/Brandenburg | rbb24 | `https://www.rbb24.de/aktuell/index.xml/feed=rss.xml` |
-| Bayern | BR24 | RSS-Übersicht auf br.de/nachrichten suchen |
-| BW / RLP | SWR | RSS-Übersicht auf swr.de/swraktuell suchen |
-
-Falls eine URL nicht (mehr) funktioniert: Beim jeweiligen Sender nach
-„RSS" suchen – alle ARD-Anstalten bieten aktuelle Feed-Übersichten an.
+`automation.yaml` legt eine Automation an, die um 06:00 Uhr die MB-Sensoren
+aktualisiert und die Top-3-Schlagzeilen als Push aufs Handy schickt.
+`notify.mobile_app_…` und die `entity_id`-Liste anpassen.
 
 ## Hinweise
 
-- `scan_interval: 30 min` reicht völlig und ist fair gegenüber den Sendern.
-- Zusätzliche Feeds (Lokalzeitung, Blaulicht, Wetterwarnungen) einfach als
-  weitere Feedparser-Sensoren anlegen und in der Karte ergänzen.
-- Wer eine aufwendigere Optik möchte: HACS-Karten wie `list-card` oder
-  `flex-table-card` können die `entries` ebenfalls rendern.
+- **Feed-URLs prüfen:** Jede URL einmal im Browser öffnen – es muss XML/RSS
+  erscheinen. Sender ändern URLs gelegentlich; im Zweifel beim Sender nach
+  „RSS" suchen.
+- **Fair bleiben:** `scan_interval` von 30 Minuten reicht – die
+  Morgen-Automation lädt um 6 Uhr ohnehin frisch.
+- **Fallback ohne Custom Card:** `dashboard-card-markdown.yaml` rendert die
+  Sensoren mit einer reinen Markdown-Karte.
+- **Optional – KI-Briefing:** Mit einer KI-Integration (z. B. Anthropic oder
+  OpenAI) kann die Automation die Schlagzeilen per `conversation.process` zu
+  einem 3-Sätze-Briefing zusammenfassen und in einem Template-Sensor ablegen.
